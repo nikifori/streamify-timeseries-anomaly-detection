@@ -6,11 +6,11 @@ single_data:
 - "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/GHL/36_Lev_corr_Temp_fault_seed_159_vars_23.test.csv@13.out"
 
 offsets:
-- 0
-- 0
-- 0
-- 0
-- 0
+- "random"
+- "random"
+- "random"
+- "random"
+- "random"
 
 lengths:
 - 100000

@@ -9,6 +9,7 @@ import pandas as pd
 from pathlib import Path
 from itertools import combinations
 import argparse
+import random
 
 
 def parse_args():
@@ -44,10 +45,22 @@ def slice_file(fp: str, offset: int, length: int) -> pd.DataFrame:
     df = pd.read_csv(fp, header=None).dropna()
     total_rows = len(df)
 
+    # Determine numeric offset
+    if isinstance(offset, int):
+        start = offset
+    elif isinstance(offset, str) and offset.lower() == "random":
+        if total_rows == 0:
+            raise ValueError(f"No rows available in {fp} to pick a random offset.")
+        # Ensure at least one row in slice; if length >= total_rows, any offset is fine (we'll slice to end)
+        max_start = max(total_rows - length, 0)
+        start = random.randint(0, max_start)
+    else:
+        raise TypeError(f"offset must be an int or 'random', got {offset!r}")
+
     # Error if offset beyond available data
-    if offset >= total_rows:
+    if start >= total_rows:
         raise IndexError(
-            f"Offset {offset} is beyond total rows ({total_rows}) for file {fp}"
+            f"Offset {start} is beyond total rows ({total_rows}) for file {fp}"
         )
 
     # Warn if requested length exceeds data bounds

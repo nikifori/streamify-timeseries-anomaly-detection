@@ -1,0 +1,33 @@
+generated_data_path: "/home/nikifori/Desktop/anomaly_detection/generated_data"
+
+methods:
+- "IForest"
+# - "SAND"
+# - "SAND"
+
+num_of_normalities_under_test: [ 1 ] # [ 1, 2, 3, 4, 5 ]
+
+normalities_under_test:
+- "ECG"
+- "IOPS"
+- "MITDB"
+- "SVDB"
+
+# ["offline", "online"]
+type:
+- "offline"
+# - "offline"
+# - "online"
+
+online_variant:
+- null
+# - null
+# - null
+
+exp_name: "testing"
+
+output_dir: "/home/nikifori/Desktop/anomaly_detection/eval/"
+
+cpu_num: 1
+
+max_length: 100000
