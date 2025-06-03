@@ -1,22 +1,16 @@
 single_data:
 - "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/ECG/MBA_ECG14046_data_4.out"
-- "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/MITDB/119.test.csv@1.out"
+- /home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/Dodgers/101-freeway-traffic.test.out
 - "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/SVDB/805.test.csv@2.out"
-- "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/IOPS/KPI-55f8b8b8-b659-38df-b3df-e4a5a8a54bc9.test.out"
-- "/home/nikifori/Desktop/anomaly_detection/TSB-UAD-Public/TSB-UAD-Public/GHL/36_Lev_corr_Temp_fault_seed_159_vars_23.test.csv@13.out"
 
 offsets:
 - "random"
 - "random"
 - "random"
-- "random"
-- "random"
 
 lengths:
-- 100000
-- 100000
-- 100000
-- 100000
-- 100000
+- 50000
+- 50000
+- 50000
 
-output_dir: /home/nikifori/Desktop/anomaly_detection/generated_data
+output_dir: /home/nikifori/Desktop/anomaly_detection/generated_data_v2

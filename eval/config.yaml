@@ -1,33 +1,64 @@
-generated_data_path: "/home/nikifori/Desktop/anomaly_detection/generated_data"
+generated_data_path: "/home/nikifori/Desktop/anomaly_detection/generated_data_v2"
 
 methods:
-- "IForest"
-# - "SAND"
-# - "SAND"
+  - "IForest"
+  - "SAND"
+  - "SAND"
+  - "HBOS"
+  - "IForest"
+  - "IForest"
+  - "IForest"
+  - "HBOS"
+  - "HBOS"
+  - "HBOS"
+  - "MatrixProfile"
+  - "MatrixProfile"
+  - "MatrixProfile"
 
-num_of_normalities_under_test: [ 1 ] # [ 1, 2, 3, 4, 5 ]
+num_of_normalities_under_test: [ 1, 2, 3 ] # [ 1, 2, 3, 4, 5 ]
+# num_of_normalities_under_test: [ 1 ] # [ 1, 2, 3, 4, 5 ]
 
 normalities_under_test:
-- "ECG"
-- "IOPS"
-- "MITDB"
-- "SVDB"
+  - "Dodgers"
+  - "ECG"
+  - "SVDB"
 
 # ["offline", "online"]
 type:
-- "offline"
-# - "offline"
-# - "online"
+  - "offline"
+  - "offline"
+  - "online"
+  - "offline"
+  - "online"
+  - "online"
+  - "online"
+  - "online"
+  - "online"
+  - "online"
+  - "offline"
+  - "online"
+  - "online"
 
 online_variant:
-- null
-# - null
-# - null
+  - null
+  - null
+  - null
+  - null
+  - "naive"
+  - "movingAverage"
+  - "precedingHistory"
+  - "naive"
+  - "movingAverage"
+  - "precedingHistory"
+  - null
+  - "naive"
+  - "precedingHistory"
 
-exp_name: "testing"
+# exp_name: "testing"
+exp_name: "exp_04_06_2025"
 
 output_dir: "/home/nikifori/Desktop/anomaly_detection/eval/"
 
 cpu_num: 1
 
-max_length: 100000
+save_plots: true

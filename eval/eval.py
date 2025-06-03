@@ -12,28 +12,32 @@ from typing import List, Dict
 import pandas as pd
 import numpy as np
 import multiprocessing
+import time
+import json
 
 from sklearn.preprocessing import MinMaxScaler
 
 from TSB_UAD.models.iforest import IForest
+from TSB_UAD.models.hbos import HBOS
 from TSB_UAD.models.sand import SAND
 from TSB_UAD.models.feature import Window
 from TSB_UAD.utils.slidingWindows import find_length
+from custom_models import IForestOnline, HBOSOnline, MPOnline
+from TSB_UAD.models.matrix_profile import MatrixProfile
 
 from figures_creation import plotFig
 
 def prepare_data_unsupervised(
         filepath: Path = None,
-        max_length: int = -1,
 ):
     df = pd.read_csv(filepath, header=None).dropna().to_numpy()
     name = filepath.stem
 
     print(f"Data shape is: {df.shape}")
-    print(f"Data header is: {df[:5]}")
+    # print(f"Data header is: {df[:5]}")
 
-    data = df[:max_length,0].astype(float)
-    label = df[:max_length,1].astype(int)
+    data = df[:,0].astype(float)
+    label = df[:,1].astype(int)
 
     slidingWindow = find_length(data)
     X_data = Window(window = slidingWindow).convert(data).to_numpy()
@@ -51,11 +55,20 @@ def method_eval(
     print(f"[INFO] Evaluating {method} on {data_file.stem} with type {type} and online variant {online_variant}")
     print("#"*50)
     exp_folder = Path(cfg["output_dir"]) / cfg["exp_name"] / f"{method}_{type}_{online_variant}_{data_file.stem}"
+
+    # Check if exp_folder already exists
+    if exp_folder.exists():
+        print(f"Experiment folder {exp_folder} already exists. Skipping...")
+        return
+
     exp_folder.mkdir(parents=True, exist_ok=True)
+
     data, X_data, label, name, slidingWindow = prepare_data_unsupervised(
         data_file,
-        max_length=cfg["max_length"],
     )
+
+    # --- timing starts here ---
+    start_time = time.perf_counter()
     match method:
         case "SAND":
             if type == "offline":
@@ -64,16 +77,17 @@ def method_eval(
                 clf.fit(data,overlaping_rate=int(1.5*slidingWindow))
                 score = clf.decision_scores_
                 score = MinMaxScaler(feature_range=(0,1)).fit_transform(score.reshape(-1,1)).ravel()
-                plotFig(data, label, score, slidingWindow, fileName=name, modelName=modelName, exp_folder=str(exp_folder)) 
+                
             elif type == "online":
                 modelName='SAND (online)'
                 clf = SAND(pattern_length=slidingWindow,subsequence_length=4*(slidingWindow))
                 clf.fit(data,online=True,alpha=0.5,init_length=5000,batch_size=2000,verbose=True,overlaping_rate=int(4*slidingWindow))
                 score = clf.decision_scores_
                 score = MinMaxScaler(feature_range=(0,1)).fit_transform(score.reshape(-1,1)).ravel()
-                plotFig(data, label, score, slidingWindow, fileName=name, modelName=modelName, exp_folder=str(exp_folder)) 
+                
             else:
                 raise ValueError(f"Unknown type: {type}")
+            
         case "IForest":
             if type == "offline":
                 modelName='IForest (offline)'
@@ -82,14 +96,194 @@ def method_eval(
                 score = clf.decision_scores_
                 score = MinMaxScaler(feature_range=(0,1)).fit_transform(score.reshape(-1,1)).ravel()
                 score = np.array([score[0]]*math.ceil((slidingWindow-1)/2) + list(score) + [score[-1]]*((slidingWindow-1)//2))
-                plotFig(data, label, score, slidingWindow, fileName=name, modelName=modelName, exp_folder=str(exp_folder)) 
+                
 
             elif type == "online":
-                raise NotImplementedError("Online IForest not implemented yet.")
+                if online_variant=="naive":
+                    modelName='IForest (online) (naive)'
+                    base_classifier = IForest(n_jobs=1)
+                    clf = IForestOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                    
+
+                elif online_variant=="movingAverage":
+                    modelName='IForest (online) (movingAverage)'
+                    base_classifier = IForest(n_jobs=1)
+                    clf = IForestOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        if_models_buffer_size=5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                
+                elif online_variant=="precedingHistory":
+                    modelName='IForest (online) (precedingHistory)'
+                    base_classifier = IForest(n_jobs=1)
+                    clf = IForestOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        num_windows=5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                    
+                else:
+                    raise NotImplementedError(f"Online variant {online_variant} not implemented yet for {method}")
             else:
                 raise ValueError(f"Unknown type: {type}")
+
+        case "HBOS":
+            if type == "offline":
+                modelName='HBOS (offline)'
+                clf = HBOS(
+                    n_bins=10,
+                    alpha=np.float64(0.1),
+                    tol=np.float64(0.5),
+                    contamination=np.float64(0.1),
+                )
+                clf.fit(X_data)
+                score = clf.decision_scores_
+                score = MinMaxScaler(feature_range=(0,1)).fit_transform(score.reshape(-1,1)).ravel()
+                score = np.array([score[0]]*math.ceil((slidingWindow-1)/2) + list(score) + [score[-1]]*((slidingWindow-1)//2))
+                
+
+            elif type == "online":
+                if online_variant=="naive":
+                    modelName='HBOS (online) (naive)'
+                    base_classifier = HBOS(
+                        n_bins=10,
+                        alpha=np.float64(0.1),
+                        tol=np.float64(0.5),
+                        contamination=np.float64(0.1),
+                    )
+                    clf = HBOSOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                    
+
+                elif online_variant=="movingAverage":
+                    modelName='HBOS (online) (movingAverage)'
+                    base_classifier = HBOS(
+                        n_bins=10,
+                        alpha=np.float64(0.1),
+                        tol=np.float64(0.5),
+                        contamination=np.float64(0.1),
+                    )
+                    clf = HBOSOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        hbos_models_buffer_size=5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                
+                elif online_variant=="precedingHistory":
+                    modelName='HBOS (online) (precedingHistory)'
+                    base_classifier = HBOS(
+                        n_bins=10,
+                        alpha=np.float64(0.1),
+                        tol=np.float64(0.5),
+                        contamination=np.float64(0.1),
+                    )
+                    clf = HBOSOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        num_windows=5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                    
+                else:
+                    raise NotImplementedError(f"Online variant {online_variant} not implemented yet for {method}")
+            else:
+                raise ValueError(f"Unknown type: {type}")
+
+        case "MatrixProfile":
+            if type == "offline":
+                modelName='MatrixProfile'
+                clf = MatrixProfile(window = slidingWindow)
+                clf.fit(data)
+                score = clf.decision_scores_
+                score = MinMaxScaler(feature_range=(0,1)).fit_transform(score.reshape(-1,1)).ravel()
+                score = np.array([score[0]]*math.ceil((slidingWindow-1)/2) + list(score) + [score[-1]]*((slidingWindow-1)//2))
+                                
+            elif type == "online":
+                if online_variant=="naive":
+                    modelName='MatrixProfile (online) (naive)'
+                    base_classifier = MatrixProfile(window = slidingWindow)
+                    clf = MPOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                    
+                elif online_variant=="movingAverage":
+                    raise NotImplementedError(f"Online variant {online_variant} not implemented for {method}")
+                    
+                
+                elif online_variant=="precedingHistory":
+                    modelName='MatrixProfile (online) (precedingHistory)'
+                    base_classifier = MatrixProfile(window = slidingWindow)
+                    clf = MPOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        num_windows = 5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                           
+                else:
+                    raise NotImplementedError(f"Online variant {online_variant} not implemented yet for {method}")
+            else:
+                raise ValueError(f"Unknown type: {type}")
+
         case _:
             raise ValueError(f"Unknown method: {method}")
+
+    # --- timing ends here ---
+    end_time = time.perf_counter()
+    duration = end_time - start_time
+
+    plotFig(data, label, score, slidingWindow, fileName=name, modelName=modelName, exp_folder=str(exp_folder), save_plots=cfg.get("save_plots", False)) 
+    
+    # save timing info
+    timing_info = {
+        "method": method,
+        "type": type,
+        "online_variant": online_variant,
+        "data_file": data_file.stem,
+        "execution_time_seconds": duration
+    }
+    timings_path = exp_folder / "execution_time.json"
+    with open(timings_path, "w") as f:
+        json.dump(timing_info, f, indent=2)
+
+    print(f"[INFO] Execution took {duration:.4f} seconds; saved to {timings_path}")
 
 
 def safe_load_yaml(yaml_file) -> Dict:
@@ -146,8 +340,8 @@ def main():
     params = safe_load_yaml(args.config)
 
     valid_files = load_valid_filepaths(
-        num_of_normalities_under_test=params.get("num_of_normalities_under_test", [1,2,3,4,5]),
-        normalities_under_test=params.get("normalities_under_test", ["ECG","GHL","IOPS","MITDB","SVDB"]),
+        num_of_normalities_under_test=params.get("num_of_normalities_under_test", [1,2,3]),
+        normalities_under_test=params.get("normalities_under_test", ["SVDB","ECG","Dodgers"]),
         generated_data_path=params.get("generated_data_path", None),
     )
 
