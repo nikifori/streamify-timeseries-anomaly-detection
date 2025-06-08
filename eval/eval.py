@@ -137,7 +137,23 @@ def method_eval(
                     )
                     clf.fit(data)
                     score = clf.decision_scores_
-                    
+                
+                elif online_variant=="adaptiveDecay":
+                     modelName = 'IForest (online) (adaptiveDecay)'
+                     base_classifier = IForest(n_jobs=1)
+                     clf = IForestOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,   # already in kwargs list
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        if_models_buffer_size=5,
+                        decay_lambda=math.log(2)/3,
+                        replace_frac=0.2,
+                        adwin_delta=0.002,
+                     )
+                     clf.fit(data)
+                     score = clf.decision_scores_
+
                 else:
                     raise NotImplementedError(f"Online variant {online_variant} not implemented yet for {method}")
             else:
@@ -209,6 +225,27 @@ def method_eval(
                         batch_size=2000,
                         slidingWindow=slidingWindow,
                         num_windows=5,
+                    )
+                    clf.fit(data)
+                    score = clf.decision_scores_
+                
+                elif online_variant == "adaptiveDecay":
+                    modelName = 'HBOS (online) (adaptiveDecay)'
+                    base_classifier = HBOS(
+                        n_bins=10,
+                        alpha=np.float64(0.1),
+                        tol=np.float64(0.5),
+                        contamination=np.float64(0.1),
+                    )
+                    clf = HBOSOnline(
+                        base_classifier=base_classifier,
+                        method=online_variant,
+                        batch_size=2000,
+                        slidingWindow=slidingWindow,
+                        hbos_models_buffer_size=5,
+                        decay_lambda=math.log(2)/3,
+                        replace_frac=0.2,
+                        adwin_delta=0.002,
                     )
                     clf.fit(data)
                     score = clf.decision_scores_

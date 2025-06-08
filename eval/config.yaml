@@ -14,6 +14,8 @@ methods:
   - "MatrixProfile"
   - "MatrixProfile"
   - "MatrixProfile"
+  - "IForest"
+  - "HBOS"
 
 num_of_normalities_under_test: [ 1, 2, 3 ] # [ 1, 2, 3, 4, 5 ]
 # num_of_normalities_under_test: [ 1 ] # [ 1, 2, 3, 4, 5 ]
@@ -38,6 +40,8 @@ type:
   - "offline"
   - "online"
   - "online"
+  - "online"
+  - "online"
 
 online_variant:
   - null
@@ -53,9 +57,11 @@ online_variant:
   - null
   - "naive"
   - "precedingHistory"
+  - "adaptiveDecay"
+  - "adaptiveDecay"
 
 # exp_name: "testing"
-exp_name: "exp_04_06_2025"
+exp_name: "exp_08_06_2025"
 
 output_dir: "/home/nikifori/Desktop/anomaly_detection/eval/"
 
